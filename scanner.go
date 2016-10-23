@@ -130,10 +130,10 @@ Next:
 func (s *Scanner) GetAllTokens() (tokens []*Token) {
 	for {
 		token := s.Next()
+		tokens = append(tokens, &token)
 		if token.Type == EOF {
 			break
 		}
-		tokens = append(tokens, &token)
 	}
 	return
 }
