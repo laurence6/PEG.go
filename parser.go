@@ -42,13 +42,10 @@ func (p *Parser) back(n int) {
 }
 
 func (p *Parser) expect(tt TokenType) error {
-	caller, _, _, _ := runtime.Caller(1)
-	callerName := runtime.FuncForPC(caller).Name()
-
 	if p.token.Type == tt {
 		return nil
 	} else {
-		return NewTokenTypeError(callerName, tt, p.token.Type)
+		return NewTokenTypeError(2, tt, p.token.Type)
 	}
 }
 
@@ -65,9 +62,12 @@ type TokenTypeError struct {
 	got    TokenType
 }
 
-func NewTokenTypeError(caller string, expect, got TokenType) error {
+func NewTokenTypeError(skipCaller int, expect, got TokenType) error {
+	caller, _, _, _ := runtime.Caller(skipCaller)
+	callerName := runtime.FuncForPC(caller).Name()
+
 	return TokenTypeError{
-		caller: caller,
+		caller: callerName,
 		expect: expect,
 		got:    got,
 	}
