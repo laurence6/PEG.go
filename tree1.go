@@ -319,7 +319,8 @@ func (p *Parser) suffixOp() (TokenType, ret) {
 }
 
 type PrimaryExpr struct {
-	Type       int // 0 == Matcher, 1 == Rule, 2 == ChoiceExpr
+	Type int // 0 == Matcher, 1 == Rule, 2 == ChoiceExpr
+
 	Matcher    *Token
 	RuleName   string
 	ChoiceExpr *ChoiceExpr
@@ -341,11 +342,11 @@ func (p *Parser) primaryExpr() (*PrimaryExpr, ret) {
 		exp.Matcher = p.token
 		p.advance()
 		n += 1
-	} else if id, r := p.ident(); r.OK() {
+	} else if id, r := p.ruleRef(); r.OK() {
 		n += r.n
 		exp.Type = 1
 		exp.RuleName = id
-	} else if e, r := p.subExpr(); r.OK() {
+	} else if e, r := p.subChoiceExpr(); r.OK() {
 		n += r.n
 		exp.Type = 2
 		exp.ChoiceExpr = e
@@ -356,7 +357,26 @@ func (p *Parser) primaryExpr() (*PrimaryExpr, ret) {
 	return exp, newRet(n)
 }
 
-func (p *Parser) subExpr() (*ChoiceExpr, ret) {
+func (p *Parser) ruleRef() (string, ret) {
+	n := 0
+
+	name, r := p.ident()
+	if r.OK() {
+		n += r.n
+	} else {
+		return "", r
+	}
+
+	if err := p.expect(ASSIGN); err != nil {
+	} else {
+		p.back(n)
+		return "", newRet(NewTokenTypeError(1, 1, ASSIGN))
+	}
+
+	return name, newRet(n)
+}
+
+func (p *Parser) subChoiceExpr() (*ChoiceExpr, ret) {
 	n := 0
 
 	if err := p.expect(LPAREN); err == nil {
