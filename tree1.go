@@ -26,27 +26,39 @@ type Grammar struct {
 
 func (p *Parser) grammar() (*Grammar, ret) {
 	grammar := &Grammar{}
+	n := 0
 
 	code, r := p.code()
 	if r.OK() {
+		n += r.n
 		grammar.Code = code
 	}
 
 	ruleList, r := p.ruleList()
 	if r.OK() {
+		n += r.n
 		grammar.RuleList = ruleList
 	} else {
+		p.back(n)
 		return nil, r
 	}
 
-	return grammar, newRet(0)
+	if err := p.expect(EOF); err == nil {
+	} else {
+		p.back(n)
+		return nil, newRet(err)
+	}
+
+	return grammar, newRet(n)
 }
 
 func (p *Parser) ruleList() ([]*Rule, ret) {
 	var ruleList []*Rule
+	n := 0
 
 	rule, r := p.rule()
 	if r.OK() {
+		n += r.n
 		ruleList = []*Rule{rule}
 	} else {
 		return nil, r
@@ -55,13 +67,14 @@ func (p *Parser) ruleList() ([]*Rule, ret) {
 	for {
 		rule, r = p.rule()
 		if r.OK() {
+			n += r.n
 			ruleList = append(ruleList, rule)
 		} else {
 			break
 		}
 	}
 
-	return ruleList, newRet(0)
+	return ruleList, newRet(n)
 }
 
 type Rule struct {
@@ -71,8 +84,10 @@ type Rule struct {
 
 func (p *Parser) rule() (*Rule, ret) {
 	rule := &Rule{}
+	n := 0
 
 	if id, r := p.ident(); r.OK() {
+		n += r.n
 		rule.Name = id
 	} else {
 		return nil, r
@@ -80,17 +95,21 @@ func (p *Parser) rule() (*Rule, ret) {
 
 	if err := p.expect(ASSIGN); err == nil {
 		p.advance()
+		n += 1
 	} else {
+		p.back(n)
 		return nil, newRet(err)
 	}
 
 	if e, r := p.choiceExpr(); r.OK() {
+		n += r.n
 		rule.ChoiceExpr = e
 	} else {
+		p.back(n)
 		return nil, r
 	}
 
-	return rule, newRet(0)
+	return rule, newRet(n)
 }
 
 type ChoiceExpr struct {
