@@ -1,6 +1,9 @@
 package peg
 
-import "fmt"
+import (
+	"fmt"
+	"unicode/utf8"
+)
 
 type Scanner struct {
 	src  []rune // source code
@@ -168,4 +171,55 @@ func (s *Scanner) skipSpace() (tt TokenType) {
 		}
 		s.nextChar()
 	}
+}
+
+func isNewline(char rune) bool {
+	return char == '\n' || char == '\r'
+}
+
+func isSpace(char rune) bool {
+	return char == ' ' || char == '\t'
+}
+
+func isLetter(char rune) bool {
+	return ('A' <= char && char <= 'Z') || ('a' <= char && char <= 'z')
+}
+
+func isDigit(char rune) bool {
+	return '0' <= char && char <= '9'
+}
+
+func lenRune(r rune) int {
+	if 0x0 <= r && r <= 0x7f {
+		return 1
+	} else if 0x80 <= r && r <= 0x7ff {
+		return 2
+	} else if 0x800 <= r && r <= 0xffff {
+		return 3
+	} else {
+		return 4
+	}
+}
+
+func byteToRune(b []byte) []rune {
+	runes := []rune{}
+	for len(b) > 0 {
+		r, size := utf8.DecodeRune(b)
+		runes = append(runes, r)
+		b = b[size:]
+	}
+	return runes
+}
+
+// TODO finish escape
+func escape(char rune) rune {
+	switch char {
+	case 'n':
+		return '\n'
+	case 'r':
+		return '\r'
+	case 't':
+		return '\t'
+	}
+	return char
 }
