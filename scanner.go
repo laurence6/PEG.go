@@ -29,10 +29,10 @@ Next:
 	}
 
 	// ident
-	if isLetter(s.char) {
+	if isIdentFirstChar(s.char) {
 		literal := []rune{s.char}
 		for {
-			if !isLetter(s.peekChar()) {
+			if !isIdentContChar(s.peekChar()) {
 				break
 			}
 			s.nextChar()
@@ -171,6 +171,20 @@ func (s *Scanner) skipSpace() (tt TokenType) {
 		}
 		s.nextChar()
 	}
+}
+
+func isIdentFirstChar(char rune) bool {
+	if isLetter(char) || char == '_' {
+		return true
+	}
+	return false
+}
+
+func isIdentContChar(char rune) bool {
+	if isLetter(char) || isDigit(char) || char == '_' {
+		return true
+	}
+	return false
 }
 
 func isNewline(char rune) bool {
