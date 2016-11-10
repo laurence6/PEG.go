@@ -351,7 +351,7 @@ func (p *parser) suffixOp() (TokenType, ret) {
 type PrimaryExpr struct {
 	Type int // 0 == Matcher, 1 == Rule, 2 == ChoiceExpr
 
-	Matcher    *Token
+	Matcher    *Matcher
 	RuleName   string
 	ChoiceExpr *ChoiceExpr
 }
@@ -361,15 +361,15 @@ func (p *parser) primaryExpr() (*PrimaryExpr, ret) {
 	n := 0
 
 	if err := p.expect(STRING); err == nil {
-		exp.Matcher = p.token
+		exp.Matcher = getMatcherString(string(p.token.Literal))
 		p.advance()
 		n += 1
 	} else if err = p.expect(RANGE); err == nil {
-		exp.Matcher = p.token
+		exp.Matcher = getMatcherRange(p.token.Literal)
 		p.advance()
 		n += 1
 	} else if err = p.expect(DOT); err == nil {
-		exp.Matcher = p.token
+		exp.Matcher = getMatcherRange([]rune("[^]"))
 		p.advance()
 		n += 1
 	} else if id, r := p.ruleRef(); r.OK() {
@@ -497,6 +497,72 @@ func (p *parser) peek(tt TokenType) bool {
 		return true
 	}
 	return false
+}
+
+type Matcher struct {
+	Not   bool // [^abc]
+	Chars []*CharRange
+}
+
+func getMatcherString(s string) *Matcher {
+	chars := []*CharRange{}
+	for _, r := range s {
+		chars = append(
+			chars,
+			newCharRangeSingle(r),
+		)
+	}
+	return &Matcher{false, chars}
+}
+
+func getMatcherRange(r []rune) *Matcher {
+	chars := []*CharRange{}
+	not := false
+
+	r = r[1 : len(r)-1] // remove '[' ']'
+
+	if len(r) > 0 && r[0] == '^' {
+		not = true
+		r = r[1:]
+	}
+
+	max := len(r) - 1
+	i := 0
+	for i <= max {
+		if i+2 <= max && r[i+1] == '-' {
+			chars = append(
+				chars,
+				newCharRange(r[i], r[i+2]),
+			)
+			i += 3
+		} else {
+			chars = append(
+				chars,
+				newCharRangeSingle(r[i]),
+			)
+			i += 1
+		}
+	}
+	return &Matcher{not, chars}
+}
+
+type CharRange struct {
+	Start rune
+	End   rune
+}
+
+func newCharRangeSingle(start rune) *CharRange {
+	return &CharRange{
+		Start: start,
+		End:   start,
+	}
+}
+
+func newCharRange(start, end rune) *CharRange {
+	return &CharRange{
+		Start: start,
+		End:   end,
+	}
 }
 
 type ret struct {
