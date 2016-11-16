@@ -49,32 +49,32 @@ func (tt TokenType) String() string {
 	case CODE:
 		return "CODE" // {abc}
 	case DOT:
-		return "DOT" // .
+		return "."
 
 	case ASSIGN:
-		return "ASSIGN" // =
+		return "="
 	case COLON:
-		return "COLON" // :
+		return ":"
 
 	case LPAREN:
-		return "LPAREN" // (
+		return "("
 	case RPAREN:
-		return "RPAREN" // )
+		return ")"
 
 	case QUESTION:
-		return "QUESTION" // ?
+		return "?"
 	case PLUS:
-		return "PLUS" // +
+		return "+"
 	case STAR:
-		return "STAR" // *
+		return "*"
 
 	case AND:
-		return "AND" // &
+		return "&"
 	case NOT:
-		return "NOT" // !
+		return "!"
 
 	case SLASH:
-		return "SLASH" // /
+		return "/"
 	}
 	return "Unknown"
 }
