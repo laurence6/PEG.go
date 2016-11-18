@@ -1,8 +1,14 @@
 package peg
 
+import "fmt"
+
 type Token struct {
 	Type    TokenType
 	Literal []rune
+}
+
+func (t Token) String() string {
+	return fmt.Sprintf("%v %q", t.Type, string(t.Literal))
 }
 
 type TokenType uint8
