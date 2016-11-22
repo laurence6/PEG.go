@@ -381,7 +381,7 @@ func (p *parser) primaryExpr() (*PrimaryExpr, ret) {
 		exp.Type = 2
 		exp.ChoiceExpr = e
 	} else {
-		return nil, newRet(newTokenTypeError(1, STRING, p.token.Type))
+		return nil, newRet(newTokenTypeError(1, STRING, p.token))
 	}
 
 	return exp, newRet(n)
@@ -400,7 +400,7 @@ func (p *parser) ruleRef() (string, ret) {
 	if err := p.expect(ASSIGN); err != nil {
 	} else {
 		p.back(n)
-		return "", newRet(newTokenTypeError(1, 1, ASSIGN))
+		return "", newRet(newTokenTypeError(1, 1, p.token))
 	}
 
 	return name, newRet(n)
@@ -488,7 +488,7 @@ func (p *parser) expect(tt TokenType) error {
 	if p.token.Type == tt {
 		return nil
 	} else {
-		return newTokenTypeError(2, tt, p.token.Type)
+		return newTokenTypeError(2, tt, p.token)
 	}
 }
 
@@ -587,10 +587,10 @@ func newRet(v interface{}) ret {
 type tokenTypeError struct {
 	caller string
 	expect TokenType
-	got    TokenType
+	got    *Token
 }
 
-func newTokenTypeError(skipCaller int, expect, got TokenType) error {
+func newTokenTypeError(skipCaller int, expect TokenType, got *Token) error {
 	caller, _, _, _ := runtime.Caller(skipCaller)
 	callerName := runtime.FuncForPC(caller).Name()
 
@@ -602,7 +602,7 @@ func newTokenTypeError(skipCaller int, expect, got TokenType) error {
 }
 
 func (e tokenTypeError) Error() string {
-	return fmt.Sprintf("%s expect %v, got %v", e.caller, e.expect, e.got)
+	return fmt.Sprintf("%d:%d %s expect %v, got %v", e.got.Pos.Line, e.got.Pos.Col, e.caller, e.expect, e.got.Type)
 }
 
 func (e tokenTypeError) String() string {
