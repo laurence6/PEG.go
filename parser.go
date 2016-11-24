@@ -349,11 +349,7 @@ func (p *parser) suffixOp() (TokenType, ret) {
 }
 
 type PrimaryExpr struct {
-	Type int // 0 == Matcher, 1 == Rule, 2 == ChoiceExpr
-
-	Matcher    *Matcher
-	RuleName   string
-	ChoiceExpr *ChoiceExpr
+	PrimaryExpr interface{} // *Matcher / string (rule) / *ChoiceExpr
 }
 
 func (p *parser) primaryExpr() (*PrimaryExpr, ret) {
@@ -361,25 +357,23 @@ func (p *parser) primaryExpr() (*PrimaryExpr, ret) {
 	n := 0
 
 	if err := p.expect(STRING); err == nil {
-		exp.Matcher = getMatcherString(string(p.token.Literal))
+		exp.PrimaryExpr = getMatcherString(string(p.token.Literal))
 		p.advance()
 		n += 1
 	} else if err = p.expect(RANGE); err == nil {
-		exp.Matcher = getMatcherRange(p.token.Literal)
+		exp.PrimaryExpr = getMatcherRange(p.token.Literal)
 		p.advance()
 		n += 1
 	} else if err = p.expect(DOT); err == nil {
-		exp.Matcher = getMatcherRange([]rune("[^]"))
+		exp.PrimaryExpr = getMatcherRange([]rune("[^]"))
 		p.advance()
 		n += 1
 	} else if id, r := p.ruleRef(); r.OK() {
 		n += r.n
-		exp.Type = 1
-		exp.RuleName = id
+		exp.PrimaryExpr = id
 	} else if e, r := p.subChoiceExpr(); r.OK() {
 		n += r.n
-		exp.Type = 2
-		exp.ChoiceExpr = e
+		exp.PrimaryExpr = e
 	} else {
 		return nil, newRet(newTokenTypeError(1, STRING, p.token))
 	}
@@ -492,31 +486,25 @@ func (p *parser) expect(tt TokenType) error {
 	}
 }
 
-func (p *parser) peek(tt TokenType) bool {
-	if p.n < len(p.tokens)-1 && p.tokens[p.n+1].Type == tt {
-		return true
-	}
-	return false
-}
-
 type Matcher struct {
-	Not   bool // [^abc]
-	Chars []*CharRange
+	Matcher interface{} // string / *CharRange
 }
 
 func getMatcherString(s string) *Matcher {
-	chars := []*CharRange{}
-	for _, r := range s {
-		chars = append(
-			chars,
-			newCharRangeSingle(r),
-		)
-	}
-	return &Matcher{false, chars}
+	return &Matcher{Matcher: s}
 }
 
 func getMatcherRange(r []rune) *Matcher {
-	chars := []*CharRange{}
+	return &Matcher{Matcher: getCharRange(r)}
+}
+
+type CharRange struct {
+	Not   bool
+	Chars []*Char
+}
+
+func getCharRange(r []rune) *CharRange {
+	chars := []*Char{}
 	not := false
 
 	r = r[1 : len(r)-1] // remove '[' ']'
@@ -543,23 +531,23 @@ func getMatcherRange(r []rune) *Matcher {
 			i += 1
 		}
 	}
-	return &Matcher{not, chars}
+	return &CharRange{Not: not, Chars: chars}
 }
 
-type CharRange struct {
+type Char struct {
 	Start rune
 	End   rune
 }
 
-func newCharRangeSingle(start rune) *CharRange {
-	return &CharRange{
+func newCharRangeSingle(start rune) *Char {
+	return &Char{
 		Start: start,
 		End:   start,
 	}
 }
 
-func newCharRange(start, end rune) *CharRange {
-	return &CharRange{
+func newCharRange(start, end rune) *Char {
+	return &Char{
 		Start: start,
 		End:   end,
 	}
