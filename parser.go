@@ -31,7 +31,7 @@ func GetTree(tokens []*Token) *Tree {
 }
 
 type Grammar struct {
-	Code     []rune
+	Code     string
 	RuleList []*Rule
 }
 
@@ -42,7 +42,7 @@ func (p *parser) grammar() (*Grammar, ret) {
 	code, r := p.code()
 	if r.OK() {
 		n += r.n
-		grammar.Code = code
+		grammar.Code = string(code)
 	}
 
 	ruleList, r := p.ruleList()
@@ -166,7 +166,7 @@ func (p *parser) choiceExpr() (*ChoiceExpr, ret) {
 
 type ActionExpr struct {
 	SeqExpr *SeqExpr
-	Code    []rune
+	Code    string
 }
 
 func (p *parser) actionExpr() (*ActionExpr, ret) {
@@ -183,7 +183,7 @@ func (p *parser) actionExpr() (*ActionExpr, ret) {
 
 	if code, r := p.code(); r.OK() {
 		n += r.n
-		exp.Code = code
+		exp.Code = string(code)
 	}
 
 	return exp, newRet(n)
