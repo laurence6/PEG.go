@@ -2,25 +2,44 @@ package peg
 
 import (
 	"fmt"
+	"io"
 	"unicode/utf8"
 )
 
 type Scanner struct {
-	src  []rune // source code
-	n    int    // current position
-	char rune   // current character
+	reader io.Reader
+	eof    bool
+	buf    []byte
+	start  int
+	end    int
+
+	line int
+	col  int
+	char rune // current character
+	next rune // next character
 }
 
-func NewScanner(src []byte) *Scanner {
-	return &Scanner{
-		src: byteToRune(src),
-		n:   -1,
+func NewScanner(reader io.Reader, bufsize int) *Scanner {
+	if bufsize < utf8.UTFMax {
+		panic("Scanner: Buffer size smaller than max utf-8 char bytes number")
 	}
+	s := &Scanner{
+		reader: reader,
+		buf:    make([]byte, bufsize),
+
+		line: 1,
+		col:  1,
+	}
+	s.nextChar()
+	return s
 }
 
-func (s *Scanner) Next() (token Token) {
+func (s *Scanner) Scan() (token Token) {
 Next:
 	s.nextChar()
+
+	token.Pos.Line = s.line
+	token.Pos.Col = s.col
 
 	tt := s.skipSpace()
 	if tt == EOF {
@@ -28,7 +47,6 @@ Next:
 		return
 	}
 
-	// ident
 	if isIdentFirstChar(s.char) {
 		literal := []rune{s.char}
 		for {
@@ -47,11 +65,10 @@ Next:
 	case '#':
 		for {
 			s.nextChar()
-			if s.char == '\x00' || isNewline(s.char) {
+			if s.char == utf8.RuneError || isNewline(s.char) {
 				goto Next
 			}
 		}
-	// string
 	case '"':
 		literal := []rune{}
 		for {
@@ -62,7 +79,7 @@ Next:
 				return
 			} else if s.char == '\\' {
 				s.nextChar()
-				literal = append(literal, escape(s.char))
+				literal = append(literal, unescape(s.char))
 			} else {
 				literal = append(literal, s.char)
 			}
@@ -78,12 +95,11 @@ Next:
 				return
 			} else if s.char == '\\' {
 				s.nextChar()
-				literal = append(literal, escape(s.char))
+				literal = append(literal, unescape(s.char))
 			} else {
 				literal = append(literal, s.char)
 			}
 		}
-	// FIXME: } appears in string
 	case '{':
 		literal := []rune{s.char}
 		depth := 0
@@ -130,40 +146,69 @@ Next:
 	return
 }
 
-func (s *Scanner) GetAllTokens() (tokens []*Token) {
-	for {
-		token := s.Next()
-		tokens = append(tokens, &token)
-		if token.Type == EOF {
-			break
-		}
+func (s *Scanner) fillBuf() {
+	if s.start > 0 {
+		copy(s.buf, s.buf[s.start:s.end])
+		s.end -= s.start
+		s.start = 0
 	}
+	if s.end >= len(s.buf) {
+		return
+	}
+
+	n, _ := s.reader.Read(s.buf[s.end:])
+	s.end += n
+	if n == 0 {
+		s.eof = true
+	}
+
 	return
 }
 
 func (s *Scanner) nextChar() {
-	if s.n+1 >= len(s.src) {
-		s.char = '\x00'
-		return
+	if s.end-s.start < utf8.UTFMax && !s.eof {
+		s.fillBuf()
 	}
 
-	s.n++
-	s.char = s.src[s.n]
+	var r rune
+	var size int
+	if s.start == s.end {
+		r, size = utf8.RuneError, 0
+	} else {
+		r, size = rune(s.buf[s.start]), 1
+		if s.start == s.end || r >= utf8.RuneSelf {
+			r, size = utf8.DecodeRune(s.buf[s.start:s.end])
+		}
+	}
+
+	if r == utf8.RuneError {
+		if size == 1 {
+			panic("Invalid utf-8")
+		}
+	}
+
+	if isNewline(s.next) {
+		s.line += 1
+		s.col = 1
+	} else {
+		s.col += 1
+	}
+
+	s.char = s.next
+	s.next = r
+
+	s.start += size
 }
 
 func (s *Scanner) peekChar() rune {
-	if s.n >= len(s.src)-1 {
-		return '\x00'
-	}
-
-	return s.src[s.n+1]
+	return s.next
 }
 
 func (s *Scanner) skipSpace() (tt TokenType) {
 	for {
 		switch {
 		case isSpace(s.char) || isNewline(s.char):
-		case s.char == '\x00':
+		case s.char == utf8.RuneError:
 			tt = EOF
 			return
 		default:
@@ -203,30 +248,7 @@ func isDigit(char rune) bool {
 	return '0' <= char && char <= '9'
 }
 
-func lenRune(r rune) int {
-	if 0x0 <= r && r <= 0x7f {
-		return 1
-	} else if 0x80 <= r && r <= 0x7ff {
-		return 2
-	} else if 0x800 <= r && r <= 0xffff {
-		return 3
-	} else {
-		return 4
-	}
-}
-
-func byteToRune(b []byte) []rune {
-	runes := []rune{}
-	for len(b) > 0 {
-		r, size := utf8.DecodeRune(b)
-		runes = append(runes, r)
-		b = b[size:]
-	}
-	return runes
-}
-
-// TODO finish escape
-func escape(char rune) rune {
+func unescape(char rune) rune {
 	switch char {
 	case 'n':
 		return '\n'

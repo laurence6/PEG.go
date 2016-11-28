@@ -2,13 +2,20 @@ package peg
 
 import "fmt"
 
+type Pos struct {
+	Line int
+	Col  int
+}
+
 type Token struct {
+	Pos Pos
+
 	Type    TokenType
 	Literal []rune
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("%v %q", t.Type, string(t.Literal))
+	return fmt.Sprintf("%d:%d %v %q", t.Pos.Line, t.Pos.Col, t.Type, string(t.Literal))
 }
 
 type TokenType uint8
