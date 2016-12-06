@@ -101,20 +101,20 @@ Next:
 			}
 		}
 	case '{':
-		literal := []rune{s.char}
+		literal := []rune{}
 		depth := 0
 		for {
 			s.nextChar()
-			literal = append(literal, s.char)
 			if s.char == '{' {
 				depth++
-			} else if s.char == '}' && (len(literal) == 2 || literal[len(literal)-2] != '\\') {
+			} else if s.char == '}' && (len(literal) == 0 || literal[len(literal)-1] != '\\') {
 				if depth == 0 {
 					break
 				} else {
 					depth--
 				}
 			}
+			literal = append(literal, s.char)
 		}
 		token.Type = CODE
 		token.Literal = literal
