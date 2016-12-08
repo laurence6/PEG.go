@@ -365,7 +365,7 @@ func (p *parser) primaryExpr() (*PrimaryExpr, ret) {
 		p.advance()
 		n += 1
 	} else if err = p.expect(DOT); err == nil {
-		exp.PrimaryExpr = getMatcherRange([]rune("[^]"))
+		exp.PrimaryExpr = getMatcherDot()
 		p.advance()
 		n += 1
 	} else if id, r := p.ruleRef(); r.OK() {
@@ -487,7 +487,7 @@ func (p *parser) expect(tt TokenType) error {
 }
 
 type Matcher struct {
-	Matcher interface{} // string / *CharRange
+	Matcher interface{} // int(dot) / string / *CharRange
 }
 
 func getMatcherString(s string) *Matcher {
@@ -496,6 +496,10 @@ func getMatcherString(s string) *Matcher {
 
 func getMatcherRange(r []rune) *Matcher {
 	return &Matcher{Matcher: getCharRange(r)}
+}
+
+func getMatcherDot() *Matcher {
+	return &Matcher{Matcher: 0xd07}
 }
 
 type CharRange struct {
