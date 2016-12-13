@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -279,11 +280,10 @@ func (pe *PrimaryExpr) GenCode(out io.Writer) {
 func serializeCharRange(chars []*Char) string {
 	buf := &bytes.Buffer{}
 	for _, c := range chars {
-		buf.WriteByte('\'')
-		buf.WriteRune(c.Start)
-		buf.WriteString("', '")
-		buf.WriteRune(c.End)
-		buf.WriteString("', ")
+		buf.WriteString(strconv.QuoteRune(c.Start))
+		buf.WriteString(", ")
+		buf.WriteString(strconv.QuoteRune(c.End))
+		buf.WriteString(", ")
 	}
 	return buf.String()
 }
