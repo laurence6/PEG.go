@@ -47,28 +47,28 @@ func (__p *parser) expectString(str string, l int) bool {
 	return false
 }
 
-func (__p *parser) expectChar(chars ...rune) rune {
+func (__p *parser) expectChar(chars ...rune) string {
 	if __p.n < len(__p.src) {
 		c := __p.src[__p.n]
 		for i := 0; i < len(chars); i += 2 {
 			if chars[i] <= c && c <= chars[i+1] {
-				return c
+				return string(c)
 			}
 		}
 	}
-	return -1
+	return ""
 }
 
-func (__p *parser) expectCharNot(chars ...rune) rune {
+func (__p *parser) expectCharNot(chars ...rune) string {
 	if __p.n < len(__p.src) {
 		c := __p.src[__p.n]
 		for i := 0; i < len(chars); i += 2 {
 			if c < chars[i] || chars[i+1] < c {
-				return c
+				return string(c)
 			}
 		}
 	}
-	return -1
+	return ""
 }
 `
 
@@ -309,7 +309,7 @@ func (m *Matcher) GenCode(out io.Writer) {
 			funcName = "expectCharNot"
 		}
 		fmt.Fprintf(out,
-			"if c := __p.%s(%s); c >= 0 {\n",
+			"if c := __p.%s(%s); c != \"\" {\n",
 			funcName,
 			serializeCharRange(m.Matcher.(*CharRange).Chars),
 		)
