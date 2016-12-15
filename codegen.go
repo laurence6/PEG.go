@@ -71,6 +71,51 @@ func (__p *parser) expectCharNot(chars ...rune) string {
 	}
 	return ""
 }
+
+func (__p *parser) zeroOrOne(pe func() interface{}) interface{} {
+	var ret interface{} = ""
+	if r := pe(); r != nil {
+		ret = r
+	}
+	return ret
+}
+
+func (__p *parser) oneOrMore(pe func() interface{}) interface{} {
+	var ret []interface{}
+	if r := pe(); r != nil {
+		ret = []interface{}{r}
+	} else {
+		return nil
+	}
+	for {
+		if r := pe(); r != nil {
+			ret = append(ret, r)
+		} else {
+			break
+		}
+	}
+	if len(ret) > 0 {
+		return ret
+	} else {
+		return nil
+	}
+}
+
+func (__p *parser) zeroOrMore(pe func() interface{}) interface{} {
+	ret := []interface{}{}
+	for {
+		if r := pe(); r != nil {
+			ret = append(ret, r)
+		} else {
+			break
+		}
+	}
+	if len(ret) >= 0 {
+		return ret
+	} else {
+		return nil
+	}
+}
 `
 
 func (tree *Tree) GenCode(out io.Writer) {
@@ -204,50 +249,11 @@ func (pe *PrefixedExpr) GenCode(out io.Writer) {
 
 		switch pe.SuffixedExpr.SuffixOp {
 		case QUESTION: // 0-1
-			fmt.Fprintf(out,
-				"var __peg_ret interface{} = \"\"\n"+
-					"if _r := __peg_pe(); _r != nil {\n"+
-					"	__peg_ret = _r\n"+
-					"}\n"+
-					"return __peg_ret\n",
-			)
+			fmt.Fprintf(out, "return __p.zeroOrOne(__peg_pe)\n")
 		case PLUS: // 1-
-			fmt.Fprintf(out,
-				"var __peg_ret []interface{}\n"+
-					"if _r := __peg_pe(); _r != nil {\n"+
-					"	__peg_ret = []interface{}{_r}\n"+
-					"} else {\n"+
-					"	return nil\n"+
-					"}\n"+
-					"for {\n"+
-					"	if _r := __peg_pe(); _r != nil {\n"+
-					"		__peg_ret = append(__peg_ret, _r)\n"+
-					"	} else {\n"+
-					"		break\n"+
-					"	}\n"+
-					"}\n"+
-					"if len(__peg_ret) > 0 {\n"+
-					"	return __peg_ret\n"+
-					"} else {\n"+
-					"	return nil\n"+
-					"}\n",
-			)
+			fmt.Fprintf(out, "return __p.oneOrMore(__peg_pe)\n")
 		case STAR: // 0-
-			fmt.Fprintf(out,
-				"__peg_ret := []interface{}{}\n"+
-					"for {\n"+
-					"	if _r := __peg_pe(); _r != nil {\n"+
-					"		__peg_ret = append(__peg_ret, _r)\n"+
-					"	} else {\n"+
-					"		break\n"+
-					"	}\n"+
-					"}\n"+
-					"if len(__peg_ret) >= 0 {\n"+
-					"	return __peg_ret\n"+
-					"} else {\n"+
-					"	return nil\n"+
-					"}\n",
-			)
+			fmt.Fprintf(out, "return __p.zeroOrMore(__peg_pe)\n")
 		}
 	} else {
 		pe.SuffixedExpr.PrimaryExpr.GenCode(out)
