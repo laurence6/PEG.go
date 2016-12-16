@@ -124,11 +124,13 @@ func (tree *Tree) GenCode(out io.Writer) {
 	fmt.Fprintf(out, header,
 		tree.RuleList[0].Name)
 
-	fmt.Fprint(out, tree.Grammar.Code)
-
 	for _, r := range tree.RuleList {
 		r.GenCode(out)
 	}
+
+	fmt.Fprint(out, tree.Grammar.Code)
+
+	io.Copy(out, userCode)
 }
 
 func (r *Rule) GenCode(out io.Writer) {
@@ -170,6 +172,9 @@ func (se *SeqExpr) hasLabel() bool {
 	return false
 }
 
+var userCodeN uint64 = 0
+var userCode = &bytes.Buffer{}
+
 func (ae *ActionExpr) GenCode(out io.Writer) {
 	fmt.Fprint(out, "func() interface{} {\n")
 
@@ -210,8 +215,36 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 			valueVarOrEmpty,
 		)
 	}
+
 	if ae.Code != "" {
-		fmt.Fprintf(out, "return func() interface{} {\n%s\n}()\n", ae.Code)
+		var paramsDef string
+		var paramsCall string
+		if hasLabel {
+			paramsDef = fmt.Sprintf("%s interface{}", strings.Join(vars, ", "))
+			paramsCall = strings.Join(vars, ", ")
+		} else {
+			paramsDef = fmt.Sprintf("result [%d]interface{}", len(vars))
+			paramsCall = fmt.Sprintf("[...]interface{}{%s}", strings.Join(vars, ", "))
+		}
+
+		userCode.WriteString(
+			fmt.Sprintf(
+				"func (__p *parser) ae_code_%d(%s) (ret interface{}) {\n"+
+					"	%s\n"+
+					"	return\n"+
+					"}\n",
+				userCodeN,
+				paramsDef,
+				ae.Code,
+			),
+		)
+
+		fmt.Fprintf(out, "return __p.ae_code_%d(%s), nil\n",
+			userCodeN,
+			paramsCall,
+		)
+
+		userCodeN++
 	} else {
 		if len(vars) > 1 {
 			fmt.Fprintf(out, "return [...]interface{}{%s}\n", strings.Join(vars, ", "))
