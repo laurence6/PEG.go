@@ -10,6 +10,8 @@ import (
 )
 
 const header = `
+var pegErr = errors.New("PEG ERROR")
+
 func main() {
 	src, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
@@ -19,7 +21,7 @@ func main() {
 	fmt.Println(Parse([]rune(string(src))))
 }
 
-func Parse(src []rune) interface{} {
+func Parse(src []rune) (interface{}, error) {
 	p := parser{src, 0}
 	return p.rule_%s()
 }
@@ -72,49 +74,44 @@ func (__p *parser) expectCharNot(chars ...rune) string {
 	return ""
 }
 
-func (__p *parser) zeroOrOne(pe func() interface{}) interface{} {
-	var ret interface{} = ""
-	if r := pe(); r != nil {
-		ret = r
+func (__p *parser) zeroOrOne(pe func() (interface{}, error)) (interface{}, error) {
+	if r, err := pe(); err == nil {
+		return r, nil
 	}
-	return ret
+	return nil, nil
 }
 
-func (__p *parser) oneOrMore(pe func() interface{}) interface{} {
+func (__p *parser) oneOrMore(pe func() (interface{}, error)) (interface{}, error) {
 	var ret []interface{}
-	if r := pe(); r != nil {
+	if r, err := pe(); err == nil {
 		ret = []interface{}{r}
 	} else {
-		return nil
+		return nil, pegErr
 	}
 	for {
-		if r := pe(); r != nil {
+		if r, err := pe(); err == nil {
 			ret = append(ret, r)
 		} else {
 			break
 		}
 	}
 	if len(ret) > 0 {
-		return ret
+		return ret, nil
 	} else {
-		return nil
+		return nil, pegErr
 	}
 }
 
-func (__p *parser) zeroOrMore(pe func() interface{}) interface{} {
+func (__p *parser) zeroOrMore(pe func() (interface{}, error)) (interface{}, error) {
 	ret := []interface{}{}
 	for {
-		if r := pe(); r != nil {
+		if r, err := pe(); err == nil {
 			ret = append(ret, r)
 		} else {
 			break
 		}
 	}
-	if len(ret) >= 0 {
-		return ret
-	} else {
-		return nil
-	}
+	return ret, nil
 }
 `
 
@@ -138,11 +135,11 @@ func (r *Rule) GenCode(out io.Writer) {
 	r.Print(out)
 	fmt.Fprintln(out, "")
 
-	fmt.Fprintf(out, "func (__p *parser) rule_%s() interface{} {\n", r.Name)
+	fmt.Fprintf(out, "func (__p *parser) rule_%s() (interface{}, error) {\n", r.Name)
 
 	r.ChoiceExpr.GenCode(out)
 
-	fmt.Fprintln(out, "return nil")
+	fmt.Fprintln(out, "return nil, pegErr")
 
 	fmt.Fprintln(out, "}\n")
 }
@@ -151,11 +148,11 @@ func (ce *ChoiceExpr) GenCode(out io.Writer) {
 	fmt.Fprintln(out, "var __peg_n int")
 	for _, ae := range ce.ActionExprs {
 		fmt.Fprintln(out, "__peg_n = __p.n")
-		fmt.Fprintf(out, "if __ae_ret := ")
+		fmt.Fprintf(out, "if __ae_ret, err := ")
 		ae.GenCode(out)
 		fmt.Fprintf(out,
-			"; __ae_ret != nil {\n"+
-				"	return __ae_ret\n"+
+			"; err == nil {\n"+
+				"	return __ae_ret, nil\n"+
 				"} else {\n"+
 				"	__p.backTo(__peg_n)"+
 				"}\n",
@@ -176,7 +173,7 @@ var userCodeN uint64 = 0
 var userCode = &bytes.Buffer{}
 
 func (ae *ActionExpr) GenCode(out io.Writer) {
-	fmt.Fprint(out, "func() interface{} {\n")
+	fmt.Fprint(out, "func() (interface{}, error) {\n")
 
 	vars := []string{}
 	hasLabel := ae.SeqExpr.hasLabel()
@@ -192,23 +189,23 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 			fmt.Fprintf(out, "var %s interface{}\n", varName)
 		}
 
-		fmt.Fprint(out, "if __pe_ret := ")
+		fmt.Fprint(out, "if __pe_ret, err := ")
 
 		le.PrefixedExpr.GenCode(out)
 
 		valueVarOrEmpty := "__pe_ret"
-		not := "!"
+		not := "="
 		if le.PrefixedExpr.PrefixOp == AND || le.PrefixedExpr.PrefixOp == NOT {
 			valueVarOrEmpty = "nil"
 		}
 		if le.PrefixedExpr.PrefixOp == NOT {
-			not = "="
+			not = "!"
 		}
 		fmt.Fprintf(out,
-			"; __pe_ret %s= nil {\n"+
+			"; err %s= nil {\n"+
 				"	%s = %s\n"+
 				"} else {\n"+
-				"	return nil\n"+
+				"	return nil, pegErr\n"+
 				"}\n",
 			not,
 			varName,
@@ -247,9 +244,9 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 		userCodeN++
 	} else {
 		if len(vars) > 1 {
-			fmt.Fprintf(out, "return [...]interface{}{%s}\n", strings.Join(vars, ", "))
+			fmt.Fprintf(out, "return [...]interface{}{%s}, nil\n", strings.Join(vars, ", "))
 		} else {
-			fmt.Fprintf(out, "return %s\n", vars[0])
+			fmt.Fprintf(out, "return %s, nil\n", vars[0])
 		}
 	}
 
@@ -259,7 +256,7 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 var advance = true
 
 func (pe *PrefixedExpr) GenCode(out io.Writer) {
-	fmt.Fprintln(out, "func() interface{} {")
+	fmt.Fprintln(out, "func() (interface{}, error) {")
 
 	if advance && (pe.PrefixOp == AND || pe.PrefixOp == NOT) {
 		advance = false
@@ -273,10 +270,10 @@ func (pe *PrefixedExpr) GenCode(out io.Writer) {
 		pe.Print(out)
 		fmt.Fprintln(out, "")
 
-		fmt.Fprintln(out, "__peg_pe := func() interface{} {")
+		fmt.Fprintln(out, "__peg_pe := func() (interface{}, error) {")
 		pe.SuffixedExpr.PrimaryExpr.GenCode(out)
 		fmt.Fprintln(out,
-			"	return nil\n"+
+			"	return nil, pegErr\n"+
 				"}",
 		)
 
@@ -292,7 +289,7 @@ func (pe *PrefixedExpr) GenCode(out io.Writer) {
 		pe.SuffixedExpr.PrimaryExpr.GenCode(out)
 	}
 
-	fmt.Fprint(out, "return nil\n}()")
+	fmt.Fprint(out, "return nil, pegErr\n}()")
 }
 
 func (pe *PrimaryExpr) GenCode(out io.Writer) {
@@ -305,8 +302,10 @@ func (pe *PrimaryExpr) GenCode(out io.Writer) {
 		pe.PrimaryExpr.(*Matcher).GenCode(out)
 	case string:
 		fmt.Fprintf(out,
-			"if _rule_ret := __p.rule_%s(); _rule_ret != nil {\n"+
-				"	return _rule_ret\n"+
+			"if _rule_ret, err := __p.rule_%s(); err == nil {\n"+
+				"	return _rule_ret, nil\n"+
+				"} else {\n"+
+				"	return nil, err\n"+
 				"}\n",
 			pe.PrimaryExpr.(string))
 	case *ChoiceExpr:
@@ -330,7 +329,7 @@ func serializeCharRange(chars []*Char) string {
 func (m *Matcher) GenCode(out io.Writer) {
 	switch m.Matcher.(type) {
 	case int:
-		fmt.Fprintln(out, "return __p.expectDot()")
+		fmt.Fprintln(out, "return __p.expectDot(), nil")
 	case string:
 		str := m.Matcher.(string)
 		l := utf8.RuneCountInString(str)
@@ -339,7 +338,7 @@ func (m *Matcher) GenCode(out io.Writer) {
 			fmt.Fprintf(out, "	__p.advance(%d)\n", l)
 		}
 		fmt.Fprintf(out,
-			"	return %q\n"+
+			"	return %q, nil\n"+
 				"}\n",
 			str)
 	case *CharRange:
@@ -356,7 +355,7 @@ func (m *Matcher) GenCode(out io.Writer) {
 			fmt.Fprint(out, "	__p.advance(1)\n")
 		}
 		fmt.Fprint(out,
-			"	return c\n"+
+			"	return c, nil\n"+
 				"}\n",
 		)
 	default:
