@@ -39,8 +39,11 @@ func (__p *parser) backTo(n int) {
 	__p.n = n
 }
 
-func (__p *parser) expectDot() rune {
-	return __p.src[__p.n]
+func (__p *parser) expectDot() string {
+	if __p.n < len(__p.src) {
+		return string(__p.src[__p.n])
+	}
+	return ""
 }
 
 func (__p *parser) expectString(str string, l int) bool {
