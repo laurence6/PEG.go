@@ -47,7 +47,7 @@ func (__p *parser) expectDot() string {
 }
 
 func (__p *parser) expectString(str string, l int) bool {
-	if __p.n + l < len(__p.src) && str == string(__p.src[__p.n:__p.n+l]) {
+	if __p.n + l <= len(__p.src) && str == string(__p.src[__p.n:__p.n+l]) {
 		return true
 	}
 	return false
