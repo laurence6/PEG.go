@@ -332,7 +332,14 @@ func serializeCharRange(chars []*Char) string {
 func (m *Matcher) GenCode(out io.Writer) {
 	switch m.Matcher.(type) {
 	case int:
-		fmt.Fprintln(out, "return __p.expectDot(), nil")
+		fmt.Fprintln(out, "if c := __p.expectDot(); c != \"\" {\n")
+		if advance {
+			fmt.Fprint(out, "	__p.advance(1)\n")
+		}
+		fmt.Fprint(out,
+			"	return c, nil\n"+
+				"}\n",
+		)
 	case string:
 		str := m.Matcher.(string)
 		l := utf8.RuneCountInString(str)
