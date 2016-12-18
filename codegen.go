@@ -39,42 +39,42 @@ func (__p *parser) backTo(n int) {
 	__p.n = n
 }
 
-func (__p *parser) expectDot() string {
+func (__p *parser) expectDot() (string, error) {
 	if __p.n < len(__p.src) {
-		return string(__p.src[__p.n])
+		return string(__p.src[__p.n]), nil
 	}
-	return ""
+	return "", pegErr
 }
 
-func (__p *parser) expectString(str string, l int) bool {
+func (__p *parser) expectString(str string, l int) error {
 	if __p.n + l <= len(__p.src) && str == string(__p.src[__p.n:__p.n+l]) {
-		return true
+		return nil
 	}
-	return false
+	return pegErr
 }
 
-func (__p *parser) expectChar(chars ...rune) string {
+func (__p *parser) expectChar(chars ...rune) (string, error) {
 	if __p.n < len(__p.src) {
 		c := __p.src[__p.n]
 		for i := 0; i < len(chars); i += 2 {
 			if chars[i] <= c && c <= chars[i+1] {
-				return string(c)
+				return string(c), nil
 			}
 		}
 	}
-	return ""
+	return "", pegErr
 }
 
-func (__p *parser) expectCharNot(chars ...rune) string {
+func (__p *parser) expectCharNot(chars ...rune) (string, error) {
 	if __p.n < len(__p.src) {
 		c := __p.src[__p.n]
 		for i := 0; i < len(chars); i += 2 {
 			if c < chars[i] || chars[i+1] < c {
-				return string(c)
+				return string(c), nil
 			}
 		}
 	}
-	return ""
+	return "", pegErr
 }
 
 func (__p *parser) zeroOrOne(pe func() (interface{}, error)) (interface{}, error) {
@@ -332,23 +332,27 @@ func serializeCharRange(chars []*Char) string {
 func (m *Matcher) GenCode(out io.Writer) {
 	switch m.Matcher.(type) {
 	case int:
-		fmt.Fprintln(out, "if c := __p.expectDot(); c != \"\" {\n")
+		fmt.Fprint(out, "if c, err := __p.expectDot(); err == nil {\n")
 		if advance {
 			fmt.Fprint(out, "	__p.advance(1)\n")
 		}
 		fmt.Fprint(out,
 			"	return c, nil\n"+
+				"} else {\n"+
+				"	return nil, err\n"+
 				"}\n",
 		)
 	case string:
 		str := m.Matcher.(string)
 		l := utf8.RuneCountInString(str)
-		fmt.Fprintf(out, "if __p.expectString(%q, %d) {\n", str, l)
+		fmt.Fprintf(out, "if err := __p.expectString(%q, %d); err == nil {\n", str, l)
 		if advance {
 			fmt.Fprintf(out, "	__p.advance(%d)\n", l)
 		}
 		fmt.Fprintf(out,
 			"	return %q, nil\n"+
+				"} else {\n"+
+				"	return nil, err\n"+
 				"}\n",
 			str)
 	case *CharRange:
@@ -357,7 +361,7 @@ func (m *Matcher) GenCode(out io.Writer) {
 			funcName = "expectCharNot"
 		}
 		fmt.Fprintf(out,
-			"if c := __p.%s(%s); c != \"\" {\n",
+			"if c, err := __p.%s(%s); err == nil {\n",
 			funcName,
 			serializeCharRange(m.Matcher.(*CharRange).Chars),
 		)
@@ -366,6 +370,8 @@ func (m *Matcher) GenCode(out io.Writer) {
 		}
 		fmt.Fprint(out,
 			"	return c, nil\n"+
+				"} else {\n"+
+				"	return nil, err\n"+
 				"}\n",
 		)
 	default:
