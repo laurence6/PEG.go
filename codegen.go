@@ -192,18 +192,21 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 			fmt.Fprintf(out, "var %s interface{}\n", varName)
 		}
 
-		fmt.Fprint(out, "if __pe_ret, err := ")
-
-		le.PrefixedExpr.GenCode(out)
-
 		valueVarOrEmpty := "__pe_ret"
 		not := "="
 		if le.PrefixedExpr.PrefixOp == AND || le.PrefixedExpr.PrefixOp == NOT {
 			valueVarOrEmpty = "nil"
+			if le.PrefixedExpr.PrefixOp == NOT {
+				not = "!"
+			}
+
+			fmt.Fprint(out, "if _, err := ")
+		} else {
+			fmt.Fprint(out, "if __pe_ret, err := ")
 		}
-		if le.PrefixedExpr.PrefixOp == NOT {
-			not = "!"
-		}
+
+		le.PrefixedExpr.GenCode(out)
+
 		fmt.Fprintf(out,
 			"; err %s= nil {\n"+
 				"	%s = %s\n"+
