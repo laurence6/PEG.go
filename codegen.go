@@ -181,41 +181,45 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 	vars := []string{}
 	hasLabel := ae.SeqExpr.hasLabel()
 	for n, le := range ae.SeqExpr.LabeledExprs {
-		varName := "_"
+		var varName string
 		if !hasLabel {
 			varName = fmt.Sprintf("__peg_v%d", n)
 		} else if le.Label != "" {
 			varName = le.Label
+		} else {
+			varName = "_"
 		}
+
 		if varName != "_" {
 			vars = append(vars, varName)
 			fmt.Fprintf(out, "var %s interface{}\n", varName)
 		}
 
-		valueVarOrEmpty := "__pe_ret"
+		var retVarName string
 		not := "="
 		if le.PrefixedExpr.PrefixOp == AND || le.PrefixedExpr.PrefixOp == NOT {
-			valueVarOrEmpty = "nil"
+			retVarName = "_"
 			if le.PrefixedExpr.PrefixOp == NOT {
 				not = "!"
 			}
-
-			fmt.Fprint(out, "if _, err := ")
+		} else if varName == "_" {
+			retVarName = "_"
 		} else {
-			fmt.Fprint(out, "if __pe_ret, err := ")
+			retVarName = "__pe_ret"
 		}
+
+		fmt.Fprintf(out, "if %s, err := ", retVarName)
 
 		le.PrefixedExpr.GenCode(out)
 
-		fmt.Fprintf(out,
-			"; err %s= nil {\n"+
-				"	%s = %s\n"+
-				"} else {\n"+
+		fmt.Fprintf(out, "; err %s= nil {\n", not)
+		if retVarName != "_" {
+			fmt.Fprintf(out, "	%s = %s\n", varName, retVarName)
+		}
+		fmt.Fprint(out,
+			"} else {\n"+
 				"	return nil, pegErr\n"+
 				"}\n",
-			not,
-			varName,
-			valueVarOrEmpty,
 		)
 	}
 
