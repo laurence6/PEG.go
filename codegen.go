@@ -41,10 +41,11 @@ func (__p *parser) backTo(n int) {
 
 func (__p *parser) expectDot(advance bool) (interface{}, error) {
 	if __p.n < len(__p.src) {
+		r := string(__p.src[__p.n])
 		if advance {
 			__p.advance(1)
 		}
-		return string(__p.src[__p.n]), nil
+		return r, nil
 	}
 	return nil, pegErr
 }
