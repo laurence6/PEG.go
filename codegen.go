@@ -79,13 +79,14 @@ func (__p *parser) expectCharNot(advance bool, chars ...rune) (interface{}, erro
 	if __p.n < len(__p.src) {
 		c := __p.src[__p.n]
 		for i := 0; i < len(chars); i += 2 {
-			if c < chars[i] || chars[i+1] < c {
-				if advance {
-					__p.advance(1)
-				}
-				return string(c), nil
+			if chars[i] <= c && c <= chars[i+1] {
+				return nil, pegErr
 			}
 		}
+		if advance {
+			__p.advance(1)
+		}
+		return string(c), nil
 	}
 	return nil, pegErr
 }
