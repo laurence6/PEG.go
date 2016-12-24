@@ -244,8 +244,13 @@ func (ae *ActionExpr) GenCode(out io.Writer) {
 			paramsDef = fmt.Sprintf("%s interface{}", strings.Join(vars, ", "))
 			paramsCall = strings.Join(vars, ", ")
 		} else {
-			paramsDef = fmt.Sprintf("result [%d]interface{}", len(vars))
-			paramsCall = fmt.Sprintf("[...]interface{}{%s}", strings.Join(vars, ", "))
+			if len(vars) == 1 {
+				paramsDef = fmt.Sprintf("result interface{}")
+				paramsCall = fmt.Sprintf("%s", vars[0])
+			} else {
+				paramsDef = fmt.Sprintf("result [%d]interface{}", len(vars))
+				paramsCall = fmt.Sprintf("[...]interface{}{%s}", strings.Join(vars, ", "))
+			}
 		}
 
 		userCode.WriteString(
