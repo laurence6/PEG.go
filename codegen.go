@@ -162,9 +162,8 @@ func (r *Rule) GenCode(out io.Writer) {
 }
 
 func (ce *ChoiceExpr) GenCode(out io.Writer) {
-	fmt.Fprintln(out, "var __peg_n int")
+	fmt.Fprintln(out, "__peg_n := __p.n")
 	for _, ae := range ce.ActionExprs {
-		fmt.Fprintln(out, "__peg_n = __p.n")
 		fmt.Fprintf(out, "if __ae_ret, err := ")
 		ae.GenCode(out)
 		fmt.Fprintf(out,
