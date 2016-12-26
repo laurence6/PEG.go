@@ -330,11 +330,7 @@ func (pe *PrimaryExpr) GenCode(out io.Writer) {
 		pe.PrimaryExpr.(*Matcher).GenCode(out)
 	case string:
 		fmt.Fprintf(out,
-			"if _rule_ret, err := __p.rule_%s(); err == nil {\n"+
-				"	return _rule_ret, nil\n"+
-				"} else {\n"+
-				"	return nil, err\n"+
-				"}\n",
+			"return __p.rule_%s()\n",
 			pe.PrimaryExpr.(string))
 	case *ChoiceExpr:
 		pe.PrimaryExpr.(*ChoiceExpr).GenCode(out)
