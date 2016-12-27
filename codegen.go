@@ -130,6 +130,32 @@ func (__p *parser) zeroOrMore(pe func() (interface{}, error)) (interface{}, erro
 	}
 	return ret, nil
 }
+
+func String(r interface{}) string {
+	if r == nil {
+		return ""
+	}
+
+	switch reflect.TypeOf(r).Kind() {
+	case reflect.Array:
+		fallthrough
+	case reflect.Slice:
+		buf := &bytes.Buffer{}
+		v := reflect.ValueOf(r)
+		for i := 0; i < v.Len(); i++ {
+			buf.WriteString(String(v.Index(i).Interface()))
+		}
+		return buf.String()
+	default:
+		return fmt.Sprint(r)
+	}
+
+	return ""
+}
+
+func RuneSlice(r interface{}) []rune {
+	return []rune(String(r))
+}
 `
 
 func (tree *Tree) GenCode(out io.Writer) {
