@@ -394,7 +394,7 @@ func (p *parser) ruleRef() (string, ret) {
 	if err := p.expect(ASSIGN); err != nil {
 	} else {
 		p.back(n)
-		return "", newRet(newTokenTypeError(1, 1, p.token))
+		return "", newRet(newTokenTypeError(1, NONE, p.token))
 	}
 
 	return name, newRet(n)

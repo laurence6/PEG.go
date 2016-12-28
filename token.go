@@ -21,8 +21,8 @@ func (t Token) String() string {
 type TokenType uint8
 
 const (
-	ERROR TokenType = iota // error
-	EOF                    // EOF
+	NONE TokenType = iota // none
+	EOF                   // EOF
 
 	IDENT  // abc
 	STRING // "abc"
@@ -48,8 +48,8 @@ const (
 
 func (tt TokenType) String() string {
 	switch tt {
-	case ERROR:
-		return "ERROR" // error
+	case NONE:
+		return "NONE" // none
 	case EOF:
 		return "EOF" // EOF
 
