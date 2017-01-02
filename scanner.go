@@ -56,8 +56,13 @@ Next:
 			s.nextChar()
 			literal = append(literal, s.char)
 		}
-		token.Literal = literal
-		token.Type = IDENT
+
+		if tt := isKeyword(literal); tt != NONE {
+			token.Type = tt
+		} else {
+			token.Type = IDENT
+			token.Literal = literal
+		}
 		return
 	}
 

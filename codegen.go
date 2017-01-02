@@ -159,7 +159,15 @@ func RuneSlice(r interface{}) []rune {
 `
 
 func (tree *Tree) GenCode(out io.Writer) {
-	fmt.Fprintf(out, "package %s\n", "main")
+	fmt.Fprintf(out, "package %s\n", tree.Package)
+
+	for _, i := range tree.Import {
+		if i.Name == "" {
+			fmt.Fprintf(out, "import %q\n", i.Path)
+		} else {
+			fmt.Fprintf(out, "import %s %q\n", i.Name, i.Path)
+		}
+	}
 
 	fmt.Fprintf(out, header,
 		tree.RuleList[0].Name)

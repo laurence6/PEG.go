@@ -44,7 +44,24 @@ const (
 	NOT // !
 
 	SLASH // /
+
+	// keyword
+	PACKAGE // package
+	IMPORT  // import
 )
+
+// isKeyword returns corresponding TokenType if literal is keyword or returns NONE
+func isKeyword(literal []rune) TokenType {
+	lit := string(literal)
+	switch lit {
+	case "package":
+		return PACKAGE
+	case "import":
+		return IMPORT
+	default:
+		return NONE
+	}
+}
 
 func (tt TokenType) String() string {
 	switch tt {
@@ -88,6 +105,11 @@ func (tt TokenType) String() string {
 
 	case SLASH:
 		return "/"
+
+	case PACKAGE:
+		return "package"
+	case IMPORT:
+		return "import"
 	}
 	return "Unknown"
 }

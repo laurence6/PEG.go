@@ -31,6 +31,8 @@ func GetTree(tokens []*Token) *Tree {
 }
 
 type Grammar struct {
+	Package  string
+	Import   []*Import
 	Code     string
 	RuleList []*Rule
 }
@@ -38,6 +40,22 @@ type Grammar struct {
 func (p *parser) grammar() (*Grammar, ret) {
 	grammar := &Grammar{}
 	n := 0
+
+	packageName, r := p.packageName()
+	if r.OK() {
+		n += r.n
+		grammar.Package = packageName
+	} else {
+		grammar.Package = "main"
+	}
+
+	imports, r := p.imports()
+	if r.OK() {
+		n += r.n
+		grammar.Import = imports
+	} else {
+		grammar.Import = []*Import{}
+	}
 
 	code, r := p.code()
 	if r.OK() {
@@ -61,6 +79,75 @@ func (p *parser) grammar() (*Grammar, ret) {
 	}
 
 	return grammar, newRet(n)
+}
+
+func (p *parser) packageName() (string, ret) {
+	if err := p.expect(PACKAGE); err == nil {
+		p.advance()
+		n := 1
+		if ident, r := p.ident(); r.OK() {
+			n += r.n
+			return ident, newRet(n)
+		} else {
+			p.back(n)
+			return "", r
+		}
+	}
+
+	return "", newRet(0)
+}
+
+type Import struct {
+	Name string
+	Path string
+}
+
+func (p *parser) imports() ([]*Import, ret) {
+	imports := []*Import{}
+	n := 0
+
+	for {
+		if err := p.expect(IMPORT); err == nil {
+			p.advance()
+			n += 1
+
+			if i, r := p.importSpec(); r.OK() {
+				n += r.n
+				imports = append(imports, i)
+			} else {
+				p.back(n)
+				return nil, r
+			}
+		} else {
+			break
+		}
+	}
+
+	return imports, newRet(n)
+}
+
+func (p *parser) importSpec() (*Import, ret) {
+	i := &Import{}
+	n := 0
+
+	if err := p.expect(DOT); err == nil {
+		p.advance()
+		n += 1
+		i.Name = "."
+	} else if id, r := p.ident(); r.OK() {
+		n += r.n
+		i.Name = id
+	}
+
+	if s, r := p.string(); r.OK() {
+		n += r.n
+		i.Path = s
+	} else {
+		p.back(n)
+		return nil, r
+	}
+
+	return i, newRet(n)
 }
 
 func (p *parser) ruleList() ([]*Rule, ret) {
