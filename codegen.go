@@ -12,15 +12,6 @@ import (
 const header = `
 var pegErr = errors.New("PEG ERROR")
 
-func main() {
-	src, err := ioutil.ReadAll(os.Stdin)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Fprintln(os.Stderr, "Input:----\n"+ string(src)+ "\n----------")
-	fmt.Println(Parse([]rune(string(src))))
-}
-
 func Parse(src []rune) (interface{}, error) {
 	p := parser{src, 0}
 	return p.rule_%s()
@@ -158,6 +149,21 @@ func RuneSlice(r interface{}) []rune {
 }
 `
 
+const mainFunc = `
+func main() {
+	src, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		panic(err)
+	}
+	tree, err := Parse([]rune(string(src)))
+	if err != nil {
+		panic(err)
+	}
+
+	tree.(*Tree).GenCode(os.Stdout)
+}
+`
+
 func (tree *Tree) GenCode(out io.Writer) {
 	fmt.Fprintf(out, "package %s\n", tree.Package)
 
@@ -169,8 +175,11 @@ func (tree *Tree) GenCode(out io.Writer) {
 		}
 	}
 
-	fmt.Fprintf(out, header,
-		tree.RuleList[0].Name)
+	if tree.Package == "main" {
+		fmt.Fprint(out, mainFunc)
+	}
+
+	fmt.Fprintf(out, header, tree.RuleList[0].Name)
 
 	for _, r := range tree.RuleList {
 		r.GenCode(out)
