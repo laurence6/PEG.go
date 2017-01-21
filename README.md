@@ -22,40 +22,31 @@ $ go get github.com/laurence6/PEG.go
 ### Example
 
 ```
-
+# 1.peg
 ```
 
 ### Generating a Parser
 
 ```go
+// main.go
 package main
 
-import "os"
+import (
+	"io"
+	"os"
+)
 
 import "github.com/laurence6/PEG.go"
 
 func main() {
 	var in io.Reader = os.Stdin
+	var out io.Writer = os.Stdout
 
-	// New scanner with buffer size 200
-	scanner := NewScanner(in, 200)
-
-	// Get all tokens
-	tokens := []*Tokens{}
-	for {
-		tok := scanner.Scan()
-		tokens = append(tokens, &tok)
-		if tok.Type == EOF {
-			break
-		}
-	}
-
-	// Get AST from tokens
-	tree := GetTree(tokens)
-
-	// Generate parser
-	tree.GenCode(os.Stdout)
+	peg.GenerateParser(in, out)
 }
+```
+```
+$ go run main.go < 1.peg > 1.go
 ```
 
 ### Using the Parser
