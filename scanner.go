@@ -224,17 +224,11 @@ func (s *Scanner) skipSpace() (tt TokenType) {
 }
 
 func isIdentFirstChar(char rune) bool {
-	if isLetter(char) || char == '_' {
-		return true
-	}
-	return false
+	return isLetter(char) || char == '_'
 }
 
 func isIdentContChar(char rune) bool {
-	if isLetter(char) || isDigit(char) || char == '_' {
-		return true
-	}
-	return false
+	return isLetter(char) || isDigit(char) || char == '_'
 }
 
 func isNewline(char rune) bool {
