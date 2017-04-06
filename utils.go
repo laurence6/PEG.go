@@ -1,6 +1,7 @@
 package peg
 
 import (
+	"fmt"
 	"io"
 	"os"
 )
@@ -23,6 +24,15 @@ func GenerateParser(r io.Reader, w io.Writer) {
 
 	// Get AST from tokens
 	tree := GetTree(tokens)
+
+	// Check AST
+	errors := Check(tree)
+	if len(errors) > 0 {
+		for _, err := range errors {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		panic(fmt.Sprintf("%d errors. Abort.", len(errors)))
+	}
 
 	// Generate parser
 	tree.GenCode(os.Stdout)
